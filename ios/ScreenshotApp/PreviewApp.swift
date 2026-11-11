@@ -2,19 +2,24 @@ import SwiftUI
 
 // Separate screenshot target. Never included in the shipping application.
 @main struct DataXPreviewApp: App {
-    @StateObject private var session: MonitorSession = {
+    @StateObject private var session = makePreviewSession()
+    @MainActor static func makePreviewSession() -> MonitorSession {
         let s = MonitorSession()
         let time = Int(Date().timeIntervalSince1970)
         s.user = MonitorUser(id:"preview",email:"customer@example.test",created:time,canView:1,role:"viewer")
         s.signedIn = true
-        let points = (0..<48).map { i in
-            WalletPoint(observedAt:time-(47-i)*3600,lamports:String(420_000_000+i*3_100_000+Int(sin(Double(i)*0.8)*18_000_000)))
+        var points: [WalletPoint] = []
+        for i in 0..<48 {
+            let observed: Int = time - (47 - i) * 3600
+            let wave: Int = Int(sin(Double(i) * 0.8) * 18_000_000.0)
+            let amount: Int = 420_000_000 + i * 3_100_000 + wave
+            points.append(WalletPoint(observedAt:observed,lamports:String(amount)))
         }
         let snap = WalletSnapshot(id:1,observedAt:time,slot:1,lamports:points.last!.lamports,tokens:[],transactions:[],stale:false)
         let report = AgentReport(id:"preview",status:"scanning",strategy:"DataX",note:"",source:"sample",sequence:1,observedAt:time,receivedAt:time,stale:false,positions:[],trades:[],realizedPnlSol:"0.042")
         s.monitor = MonitorResponse(mode:"preview",wallet:"PreviewOnly",snapshot:snap,points:points,agent:report)
         return s
-    }()
+    }
     private var screen: String { ProcessInfo.processInfo.arguments.last ?? "home" }
     var body: some Scene {
         WindowGroup {
