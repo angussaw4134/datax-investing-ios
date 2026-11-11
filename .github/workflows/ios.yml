@@ -1,0 +1,61 @@
+name: Build DataX iOS
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: xcodegen generate --spec ios/project.yml
+      - name: Select iPhone simulator
+        id: simulator
+        run: |
+          xcrun simctl list devices available --json > /tmp/datax-simulators.json
+          python3 - <<'PY'
+          import json, os
+          data=json.load(open('/tmp/datax-simulators.json'))
+          phones=[d for runtime,devices in data['devices'].items() if 'iOS' in runtime for d in devices if d.get('isAvailable') and 'iPhone' in d['name']]
+          if not phones: raise SystemExit('No available iPhone simulator')
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f: f.write('id='+phones[0]['udid']+'\n')
+          PY
+      - name: Build and test
+        run: |
+          mkdir -p build
+          xcodebuild -project ios/DataXInvesting.xcodeproj -scheme DataXInvesting -configuration Debug -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' -derivedDataPath build/DerivedData -resultBundlePath build/MonitorTests.xcresult CODE_SIGNING_ALLOWED=NO test
+      - name: Package simulator app
+        run: ditto -c -k --sequesterRsrc --keepParent build/DerivedData/Build/Products/Debug-iphonesimulator/DataXInvesting.app build/DataX-simulator.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DataX-simulator
+          path: build/DataX-simulator.zip
+          if-no-files-found: error
+      - name: Build unsigned device archive
+        run: |
+          xcodebuild -project ios/DataXInvesting.xcodeproj -scheme DataXInvesting -configuration Release -destination 'generic/platform=iOS' -archivePath build/DataXInvesting.xcarchive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO archive
+          mkdir -p build/unsigned/Payload
+          cp -R build/DataXInvesting.xcarchive/Products/Applications/DataXInvesting.app build/unsigned/Payload/
+          cd build/unsigned
+          zip -qr ../DataX-UNSIGNED.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DataX-unsigned-device
+          path: |
+            build/DataX-UNSIGNED.ipa
+            build/DataXInvesting.xcarchive
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: DataX-test-results
+          path: build/MonitorTests.xcresult
+          if-no-files-found: ignore

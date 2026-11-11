@@ -1,0 +1,14 @@
+.DS_Store
+build/
+DerivedData/
+*.xcodeproj/
+*.xcworkspace/
+*.xcuserstate
+.env*
+.dev.vars*
+*.p12
+*.mobileprovision
+*.p8
+*.key
+.wrangler/
+node_modules/
