@@ -42,6 +42,7 @@ struct OriginalDashboard: View {
     @State private var period = "1M"
     @State private var selectedDate: Date?
     @State private var transferNotice = false
+    @State private var chartScope = "Personal"
     private let periods = ["1W","1M","3M","ALL"]
     private var points: [WalletPoint] {
         let days = period == "1W" ? 7.0 : period == "1M" ? 30.0 : period == "3M" ? 90.0 : 100000.0
@@ -58,9 +59,10 @@ struct OriginalDashboard: View {
                 if !session.canView { AccessState() }
                 else if let data = session.monitor {
                     portfolioHeading(data)
-                    balance(data)
+                    personalBalance
+                    poolBalance(data)
                     shortcuts
-                    history
+                    performanceHistory
                     HStack(spacing:12) {
                         OriginalStat(title:"REPORTED EARNINGS",value:data.agent?.realizedPnlSol.map { $0+" SOL" } ?? "Unavailable")
                         OriginalStat(title:"OPEN POSITIONS",value:data.agent.map { String($0.positions.count) } ?? "Unavailable")
@@ -81,7 +83,7 @@ struct OriginalDashboard: View {
             DataXMark(size:42)
             VStack(alignment:.leading,spacing:4) {
                 Text("DataX Investing").font(.system(size:15,weight:.semibold))
-                Text("Personal account").font(.caption).foregroundStyle(Theme.muted)
+                Text("Customer account").font(.caption).foregroundStyle(Theme.muted)
             }
             Spacer()
             NavigationLink { ChainMonitorView() } label: {
@@ -91,9 +93,61 @@ struct OriginalDashboard: View {
     }
     private func portfolioHeading(_ data: MonitorResponse) -> some View {
         HStack {
-            Text(selected == nil ? "TRADING WALLET" : "HISTORICAL BALANCE").font(.system(size:10,weight:.semibold)).tracking(2).foregroundStyle(Theme.muted)
+            Text("YOUR BALANCE").font(.system(size:10,weight:.semibold)).tracking(2).foregroundStyle(Theme.muted)
             Spacer()
             OriginalTag(text:session.offline ? "Offline" : data.snapshot == nil ? "Connecting" : data.snapshot?.isStale == true ? "Stale" : "Live",color:session.offline || data.snapshot?.isStale == true ? .orange : .white)
+        }
+    }
+    private var personalBalance: some View {
+        VStack(alignment:.leading,spacing:14) {
+            Text("Unavailable").font(.system(size:42,weight:.medium,design:.rounded)).minimumScaleFactor(0.6).lineLimit(1)
+            Text("Your share of the DataX pool").font(.caption).foregroundStyle(Theme.muted)
+            HStack(spacing:12) {
+                OriginalStat(title:"YOU DEPOSITED",value:"Unavailable")
+                OriginalStat(title:"YOUR GAINS",value:"Unavailable")
+            }
+            HStack {
+                Text("Your return").foregroundStyle(Theme.muted)
+                Spacer()
+                Text("Unavailable").fontWeight(.medium)
+            }.font(.subheadline)
+            Text("Personal balance and percentage gains will appear when customer accounting is connected.")
+                .font(.caption2).foregroundStyle(Theme.muted)
+        }
+    }
+    private func poolBalance(_ data: MonitorResponse) -> some View {
+        HStack(spacing:14) {
+            Image(systemName:"square.stack.3d.up").font(.title3).frame(width:40,height:40).background(.white.opacity(0.06),in:RoundedRectangle(cornerRadius:13))
+            VStack(alignment:.leading,spacing:5) {
+                Text("POOL BALANCE").font(.system(size:9,weight:.semibold)).tracking(1).foregroundStyle(Theme.muted)
+                Text(data.snapshot.map { MonitorFormat.units($0.lamports,decimals:9)+" SOL" } ?? "Unavailable")
+                    .font(.system(size:20,weight:.medium,design:.rounded)).minimumScaleFactor(0.5).lineLimit(1)
+                Text("SOL cash only · excludes token positions").font(.caption2).foregroundStyle(Theme.muted)
+            }
+            Spacer(minLength:0)
+        }.monitorCard()
+    }
+    private var performanceHistory: some View {
+        VStack(alignment:.leading,spacing:18) {
+            HStack {
+                Text("Performance").font(.headline)
+                Spacer()
+                Picker("Chart",selection:$chartScope) {
+                    Text("Personal").tag("Personal")
+                    Text("Pool").tag("Pool")
+                }.pickerStyle(.segmented).frame(width:170)
+            }
+            if chartScope == "Personal" {
+                OriginalEmpty(title:"Your performance",message:"Your personal gains chart will appear once your deposits and pool share are recorded.",icon:"chart.line.uptrend.xyaxis")
+            } else {
+                if let point = selected {
+                    Text(MonitorFormat.units(point.lamports,decimals:9)+" SOL")
+                        .font(.title3.monospacedDigit())
+                    Text(MonitorFormat.time(point.observedAt)).font(.caption2).foregroundStyle(Theme.muted)
+                }
+                history
+                Text("Pool SOL cash history includes deposits, withdrawals and network costs. It is not a profit chart.").font(.caption2).foregroundStyle(Theme.muted)
+            }
         }
     }
     private func balance(_ data: MonitorResponse) -> some View {
