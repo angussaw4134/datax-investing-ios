@@ -57,6 +57,39 @@ struct MonitorResponse: Decodable {
     let points: [WalletPoint]
     let agent: AgentReport?
 }
+struct PortfolioResponse: Decodable {
+    let wallet: String
+    let snapshot: PortfolioSnapshot?
+    let valuation: PoolValuation?
+    let onchainPnl: PoolPnl?
+}
+struct PortfolioSnapshot: Decodable {
+    let observedAt: Int
+    let stale: Bool
+    var isStale: Bool { stale || Date().timeIntervalSince1970-Double(observedAt)>300 }
+}
+struct PoolValuation: Decodable {
+    let totalUsd, totalAud, totalSol: Double?
+    let complete: Bool
+    let notes: [String]
+}
+struct PoolPnl: Decodable {
+    let netDepositsSol: String
+    let pnlSol: Double?
+    let complete: Bool
+}
+struct TransfersResponse: Decodable {
+    let wallet, netDepositsSol: String
+    let pendingClassification: Int
+    let transfers: [WalletTransfer]
+}
+struct WalletTransfer: Decodable, Identifiable {
+    let signature, kind: String
+    let mint, amountDisplay: String?
+    let blockTime: Int?
+    let verified, success: Bool
+    var id: String { signature }
+}
 enum MonitorFormat {
     // Exact string conversion for displayed balances. Double is used only for plotting.
     static func units(_ raw: String, decimals: Int) -> String {

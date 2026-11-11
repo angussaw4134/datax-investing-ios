@@ -2,6 +2,22 @@ import XCTest
 @testable import DataXInvesting
 
 final class MonitorContractTests: XCTestCase {
+    func testPortfolioPartialValuationAndUnknownGain() throws {
+        let raw=#"{"wallet":"pool","snapshot":{"observed_at":1,"stale":false},"valuation":{"total_usd":12.5,"total_aud":null,"total_sol":0.15,"complete":false,"notes":["Unpriced holding"]},"onchain_pnl":{"net_deposits_sol":"0.2","pnl_sol":null,"complete":false}}"#
+        let value=try decoder.decode(PortfolioResponse.self,from:Data(raw.utf8))
+        XCTAssertNil(value.valuation?.totalAud)
+        XCTAssertNil(value.onchainPnl?.pnlSol)
+        XCTAssertEqual(value.valuation?.complete,false)
+        XCTAssertEqual(value.snapshot?.isStale,true)
+    }
+    func testTransferContractPreservesFailedAndExactAmount() throws {
+        let raw=#"{"wallet":"pool","net_deposits_sol":"0.1","pending_classification":2,"transfers":[{"signature":"sig","kind":"withdrawal","mint":"SOL","amount_display":"0.000000001","block_time":null,"verified":true,"success":false}]}"#
+        let value=try decoder.decode(TransfersResponse.self,from:Data(raw.utf8))
+        XCTAssertEqual(value.pendingClassification,2)
+        XCTAssertEqual(value.transfers.first?.amountDisplay,"0.000000001")
+        XCTAssertEqual(value.transfers.first?.success,false)
+        XCTAssertNil(value.transfers.first?.blockTime)
+    }
     private var decoder: JSONDecoder { let d=JSONDecoder();d.keyDecodingStrategy = .convertFromSnakeCase;return d }
     func testUnknownDataIsNotZero() throws {
         let raw=#"{"mode":"live-read-only","wallet":"wallet","snapshot":null,"points":[],"agent":null,"trading_profit_verified":null,"customer_balance":null}"#

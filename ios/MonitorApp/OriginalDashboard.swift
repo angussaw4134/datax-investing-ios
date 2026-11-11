@@ -37,7 +37,7 @@ struct OriginalEmpty: View {
         }.frame(maxWidth:.infinity).padding(.vertical,32).monitorCard()
     }
 }
-struct OriginalDashboard: View {
+struct LegacyDashboard: View {
     @EnvironmentObject var session: MonitorSession
     @State private var period = "1M"
     @State private var selectedDate: Date?
@@ -249,7 +249,7 @@ struct TransferAvailabilityView: View {
         }.preferredColorScheme(.dark)
     }
 }
-struct OriginalWalletView: View {
+struct LegacyWalletView: View {
     @EnvironmentObject var session: MonitorSession
     var body: some View {
         ScrollView {

@@ -41,8 +41,8 @@ struct DataXUnlockView: View {
                 Circle().fill(.white.opacity(0.035)).frame(width:145,height:145).blur(radius:24)
                 DataXMark(size:92).shadow(color:.white.opacity(0.06),radius:28)
             }.frame(height:230)
-            Text("DataX").font(.system(size:36,weight:.semibold,design:.rounded)).tracking(-1)
-            Text("Your portfolio. Protected.").font(.subheadline).foregroundStyle(Theme.muted).padding(.top,10)
+            Text("Welcome back.").font(.system(size:32,weight:.medium)).tracking(-1)
+            Text("Your DataX account is ready.").font(.system(size:13)).foregroundStyle(Theme.muted).padding(.top,12)
             Spacer()
             Button {
                 guard !unlocking else { return }
@@ -69,7 +69,7 @@ struct DataXUnlockView: View {
 enum DataXTab: Int, CaseIterable {
     case overview, trades, wallet, activity, account
     var title: String { ["Home","Trades","Wallet","Activity","Account"][rawValue] }
-    var icon: String { ["square.grid.2x2.fill","chart.xyaxis.line","wallet.pass.fill","clock.fill","person.crop.circle.fill"][rawValue] }
+    var icon: String { ["square.grid.2x2","chart.xyaxis.line","wallet.pass","clock","person.crop.circle"][rawValue] }
 }
 struct DataXTabBar: View {
     @Binding var selection: DataXTab
@@ -81,20 +81,20 @@ struct DataXTabBar: View {
                 Button {
                     withAnimation(reduceMotion ? nil : .spring(response:0.32,dampingFraction:0.82)) { selection=tab }
                 } label: {
-                    VStack(spacing:7) {
-                        Image(systemName:tab.icon).font(.system(size:18,weight:.medium)).frame(height:22)
-                        Text(tab.title).font(.system(size:10,weight:selection == tab ? .semibold : .medium)).lineLimit(1)
+                    VStack(spacing:6) {
+                        Image(systemName:tab.icon).font(.system(size:19,weight:selection == tab ? .semibold : .regular)).frame(height:23)
+                        Text(tab.title).font(.system(size:9,weight:selection == tab ? .semibold : .medium)).lineLimit(1)
                     }.foregroundStyle(selection == tab ? Color.white : Color(white:0.45))
-                        .frame(maxWidth:.infinity).frame(height:59)
+                        .frame(maxWidth:.infinity).frame(height:52)
                         .background {
-                            if selection == tab { RoundedRectangle(cornerRadius:19).fill(.white.opacity(0.095)).matchedGeometryEffect(id:"selected",in:highlight) }
+                            if selection == tab { Capsule().fill(.white.opacity(0.08)).matchedGeometryEffect(id:"selected",in:highlight) }
                         }
                 }.buttonStyle(PressFeedback()).accessibilityLabel(tab.title)
                     .accessibilityAddTraits(selection == tab ? .isSelected : [])
             }
-        }.padding(7).background(Color(white:0.055),in:RoundedRectangle(cornerRadius:27))
-            .overlay(RoundedRectangle(cornerRadius:27).stroke(.white.opacity(0.09),lineWidth:1))
-            .shadow(color:.black.opacity(0.5),radius:16,y:6).padding(.horizontal,16).padding(.top,8).padding(.bottom,4)
+        }.padding(6).background(Color(white:0.045),in:Capsule())
+            .overlay(Capsule().stroke(.white.opacity(0.07),lineWidth:1))
+            .shadow(color:.black.opacity(0.5),radius:16,y:6).padding(.horizontal,22).padding(.top,8).padding(.bottom,4)
     }
 }
 struct StrategyPresentation {
@@ -120,7 +120,7 @@ struct SimpleStrategyCard: View {
     @State private var pulse=false
     var body: some View {
         let status=StrategyPresentation(report)
-        VStack(alignment:.leading,spacing:22) {
+        VStack(alignment:.leading,spacing:16) {
             HStack {
                 Text("DATAX TRADING SYSTEMS").font(.system(size:9,weight:.semibold)).tracking(1.5).foregroundStyle(Theme.muted)
                 Spacer()
@@ -128,11 +128,11 @@ struct SimpleStrategyCard: View {
             }
             HStack(spacing:16) {
                 ZStack {
-                    RoundedRectangle(cornerRadius:17).fill(.white.opacity(0.06)).frame(width:54,height:54)
-                    Image(systemName:status.icon).font(.system(size:23,weight:.light)).opacity(pulse && !reduceMotion ? 0.55 : 1)
+                    Circle().fill(.white.opacity(0.05)).frame(width:44,height:44)
+                    Image(systemName:status.icon).font(.system(size:19,weight:.light)).opacity(pulse && !reduceMotion ? 0.55 : 1)
                 }
                 VStack(alignment:.leading,spacing:6) {
-                    Text(status.title).font(.system(size:27,weight:.medium,design:.rounded)).contentTransition(.numericText())
+                    Text(status.title).font(.system(size:20,weight:.medium)).contentTransition(.numericText())
                     Text(status.detail).font(.caption).foregroundStyle(Theme.muted)
                 }
                 Spacer(minLength:0)

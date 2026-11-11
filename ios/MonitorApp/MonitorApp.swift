@@ -2,7 +2,7 @@ import SwiftUI
 import Charts
 
 enum Theme {
-    static let card=Color(white:0.075), muted=Color(white:0.57), positive=Color(red:0.60,green:0.86,blue:0.68)
+    static let card=Color(white:0.055), muted=Color(white:0.58), positive=Color(red:0.60,green:0.86,blue:0.68)
 }
 extension View { func monitorCard() -> some View { padding(20).frame(maxWidth:.infinity,alignment:.leading).background(Theme.card,in:RoundedRectangle(cornerRadius:22)).overlay(RoundedRectangle(cornerRadius:22).stroke(.white.opacity(0.06))) } }
 struct MonitorBrand: View { var body: some View { HStack(spacing:9){DataXMark(size:34);Text("DataX").font(.system(size:25,weight:.bold,design:.rounded));Text("INVESTING").font(.system(size:9,weight:.medium)).tracking(2).foregroundStyle(Theme.muted)} } }
@@ -47,9 +47,12 @@ struct MonitorLogin: View {
     @State private var resendAfter=Date.distantPast
     var body: some View {
         ScrollView { VStack(alignment:.leading,spacing:24){
-            MonitorBrand().padding(.top,40)
-            Text(sent ? "Check your inbox." : "Your next chapter.").font(.system(size:40,weight:.semibold)).tracking(-1.5)
-            Text(sent ? "Enter the 8-digit code sent to your email. It expires in ten minutes." : "Your portfolio. Your performance. DataX Trading Systems.").foregroundStyle(Theme.muted)
+            MonitorBrand().padding(.top,20)
+            VStack(alignment:.leading,spacing:18) {
+                SectionEyebrow(title:sent ? "Verify your email" : "Welcome to DataX")
+                Text(sent ? "Check your\ninbox." : "A clearer view.\nOf every move.").font(.system(size:43,weight:.medium)).tracking(-1.8).lineSpacing(-2)
+                Text(sent ? "Enter the 8-digit code sent to your email. It expires in ten minutes." : "Your wallet, trading activity and performance.\nTogether in one place.").font(.system(size:14)).foregroundStyle(Theme.muted).lineSpacing(5)
+            }.padding(.top,38).padding(.bottom,18)
             VStack(spacing:18){
                 TextField("Email address",text:$email).textContentType(.emailAddress).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled().disabled(sent)
                 if sent { Divider();TextField("8-digit code",text:$code).textContentType(.oneTimeCode).keyboardType(.numberPad).onChange(of:code){_,v in code=String(v.filter(\.isNumber).prefix(8))} }
@@ -105,6 +108,9 @@ struct StrategyMonitorView: View {
     }.padding(22)}.refreshable{await session.refresh()}}}.background(Color.black).navigationTitle("Strategy") }
 }
 struct ChainMonitorView: View {
+    var body: some View { TrackedTransfersView() }
+}
+struct LegacyChainMonitorView: View {
     @EnvironmentObject var session: MonitorSession
     var body: some View { Group{if !session.canView{AccessState()}else{ScrollView{VStack(alignment:.leading,spacing:18){
         Text("Recent on-chain activity").font(.headline)

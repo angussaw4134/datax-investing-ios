@@ -23,6 +23,9 @@ enum MonitorVault {
     static let origin="https://datax-monitor.accesshubv1.workers.dev"
     @Published var user: MonitorUser?
     @Published var monitor: MonitorResponse?
+    @Published var portfolio: PortfolioResponse?
+    @Published var transfers: TransfersResponse?
+    @Published var trackingError: String?
     @Published var users: [MonitorUser]=[]
     @Published var signedIn=MonitorVault.load() != nil
     @Published var busy=false
@@ -68,7 +71,26 @@ enum MonitorVault {
             if canView { monitor=try decoder.decode(MonitorResponse.self,from:await request("/monitor")) } else { monitor=nil }
             if user?.isAdmin == true { users=try decoder.decode(UsersResponse.self,from:await request("/admin/users")).users } else { users=[] }
             lastUpdated=Date();offline=false
+            if canView { await refreshTracking() }
+            else { portfolio=nil;transfers=nil;trackingError=nil }
         }catch{offline=true;self.error=error.localizedDescription}
+    }
+    private func refreshTracking() async {
+        // Each endpoint can fail independently. Never retain old financial totals on failure.
+        trackingError=nil
+        do {
+            let value=try decoder.decode(PortfolioResponse.self,from:await request("/portfolio"))
+            guard signedIn && canView else { return }
+            guard value.wallet == monitor?.wallet else { throw URLError(.badServerResponse) }
+            portfolio=value
+        } catch { portfolio=nil;trackingError="Pool valuation is temporarily unavailable." }
+        guard signedIn && canView else { return }
+        do {
+            let value=try decoder.decode(TransfersResponse.self,from:await request("/transfers"))
+            guard signedIn && canView else { return }
+            guard value.wallet == monitor?.wallet else { throw URLError(.badServerResponse) }
+            transfers=value
+        } catch { transfers=nil;trackingError="Some wallet tracking is temporarily unavailable. Pull down to retry." }
     }
     func refreshWallet() async {
         guard !busy else { return };busy=true;defer{busy=false}
@@ -86,6 +108,6 @@ enum MonitorVault {
         guard !busy else { return };busy=true;defer{busy=false}
         do{_ = try await request("/auth/delete",body:["confirm":"DELETE"]);clear()}catch{self.error=error.localizedDescription}
     }
-    func clear() { MonitorVault.clear();token=nil;signedIn=false;user=nil;monitor=nil;users=[];locked=false;lastUpdated=nil;offline=false }
+    func clear() { MonitorVault.clear();token=nil;signedIn=false;user=nil;monitor=nil;portfolio=nil;transfers=nil;trackingError=nil;users=[];locked=false;lastUpdated=nil;offline=false }
     func unlock() async { do{if try await LAContext().evaluatePolicy(.deviceOwnerAuthentication,localizedReason:"Unlock DataX Investing"){locked=false;await refresh()}}catch{self.error=error.localizedDescription} }
 }
