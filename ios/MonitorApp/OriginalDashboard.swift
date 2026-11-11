@@ -78,7 +78,7 @@ struct OriginalDashboard: View {
     }
     private var header: some View {
         HStack(spacing:12) {
-            Image(systemName:"chart.xyaxis.line").font(.system(size:19,weight:.semibold)).frame(width:42,height:42).background(Color(white:0.12),in:RoundedRectangle(cornerRadius:15))
+            DataXMark(size:42)
             VStack(alignment:.leading,spacing:4) {
                 Text("DataX Investing").font(.system(size:15,weight:.semibold))
                 Text("Personal account").font(.caption).foregroundStyle(Theme.muted)
@@ -91,7 +91,7 @@ struct OriginalDashboard: View {
     }
     private func portfolioHeading(_ data: MonitorResponse) -> some View {
         HStack {
-            Text(selected == nil ? "YOUR PORTFOLIO" : "HISTORICAL BALANCE").font(.system(size:10,weight:.semibold)).tracking(2).foregroundStyle(Theme.muted)
+            Text(selected == nil ? "TRADING WALLET" : "HISTORICAL BALANCE").font(.system(size:10,weight:.semibold)).tracking(2).foregroundStyle(Theme.muted)
             Spacer()
             OriginalTag(text:session.offline ? "Offline" : data.snapshot == nil ? "Connecting" : data.snapshot?.isStale == true ? "Stale" : "Live",color:session.offline || data.snapshot?.isStale == true ? .orange : .white)
         }
@@ -161,16 +161,7 @@ struct OriginalDashboard: View {
         }
     }
     private func tradingSystem(_ data: MonitorResponse) -> some View {
-        VStack(alignment:.leading,spacing:16) {
-            HStack { Image(systemName:"waveform.path");Text("DataX Trading Systems").font(.subheadline.weight(.semibold));Spacer() }
-            Text(data.agent?.note ?? "Waiting for your trading feed connection.").font(.caption).foregroundStyle(Theme.muted)
-            Divider()
-            HStack {
-                Text("System status")
-                Spacer()
-                Text(data.agent.map { ($0.isStale ? "Stale · " : "")+$0.status.capitalized } ?? "Unavailable")
-            }.font(.caption)
-        }.monitorCard()
+        SimpleStrategyCard(report:data.agent)
     }
     private func positions(_ data: MonitorResponse) -> some View {
         VStack(spacing:16) {
