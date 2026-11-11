@@ -12,6 +12,7 @@ struct ActionButton: View {
     var body: some View { Button(action:action){HStack{Text(title).fontWeight(.semibold);Spacer();Image(systemName:"arrow.up.right")}.padding(18).foregroundStyle(.black).background(.white,in:RoundedRectangle(cornerRadius:16))}.buttonStyle(.plain) }
 }
 struct MonitorEmpty: View { let title, detail: String;var body: some View { VStack(alignment:.leading,spacing:10){Text(title).font(.headline);Text(detail).font(.subheadline).foregroundStyle(Theme.muted)}.monitorCard() } }
+#if !SCREENSHOT
 @main struct DataXMonitorApp: App {
     @StateObject private var session=MonitorSession()
     @Environment(\.scenePhase) private var phase
@@ -20,6 +21,7 @@ struct MonitorEmpty: View { let title, detail: String;var body: some View { VSta
         if value == .active && session.signedIn && !session.locked { Task { await session.refresh() } }
     } } }
 }
+#endif
 struct MonitorRoot: View {
     @EnvironmentObject var session: MonitorSession
     @Environment(\.scenePhase) private var phase

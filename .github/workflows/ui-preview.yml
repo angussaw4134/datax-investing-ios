@@ -1,0 +1,39 @@
+name: Capture DataX UI
+on:
+  push:
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ui-preview.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  screenshots:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: xcodegen generate --spec ios/project.yml
+      - name: Build preview app
+        run: xcodebuild -project ios/DataXInvesting.xcodeproj -scheme DataXPreview -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build/Preview CODE_SIGNING_ALLOWED=NO build
+      - name: Capture screens
+        run: |
+          mkdir -p build/screenshots
+          xcrun simctl list devices available --json > /tmp/devices.json
+          DEVICE=$(python3 -c 'import json; d=json.load(open("/tmp/devices.json")); p=[v for k,vs in d["devices"].items() if "iOS" in k for v in vs if v["isAvailable"] and "iPhone" in v["name"]]; print(next((v["udid"] for v in p if "Pro Max" in v["name"]),p[0]["udid"]))')
+          xcrun simctl boot "$DEVICE"
+          xcrun simctl bootstatus "$DEVICE" -b
+          xcrun simctl status_bar "$DEVICE" override --time '9:41' --batteryState charged --batteryLevel 100
+          xcrun simctl install "$DEVICE" build/Preview/Build/Products/Debug-iphonesimulator/DataXPreview.app
+          for SCREEN in home strategy unlock login; do
+            xcrun simctl launch "$DEVICE" com.datax.preview "$SCREEN"
+            sleep 5
+            xcrun simctl io "$DEVICE" screenshot "build/screenshots/$SCREEN.png"
+            xcrun simctl terminate "$DEVICE" com.datax.preview
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DataX-UI-screenshots
+          path: build/screenshots/*.png
+          if-no-files-found: error
