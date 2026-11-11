@@ -38,7 +38,10 @@ struct MonitorRoot: View {
 }
 struct MonitorLogin: View {
     @EnvironmentObject var session: MonitorSession
-    @State private var email="", code="", accepted=false, sent=false
+    @State private var email=""
+    @State private var code=""
+    @State private var accepted=false
+    @State private var sent=false
     @State private var resendAfter=Date.distantPast
     var body: some View {
         ScrollView { VStack(alignment:.leading,spacing:24){
@@ -50,8 +53,8 @@ struct MonitorLogin: View {
                 if sent { Divider();TextField("8-digit code",text:$code).textContentType(.oneTimeCode).keyboardType(.numberPad).onChange(of:code){_,v in code=String(v.filter(\.isNumber).prefix(8))} }
             }.monitorCard()
             if !sent { Toggle("I accept the monitoring terms and privacy notice",isOn:$accepted).font(.subheadline) }
-            HStack{Link("Terms",destination:URL(string:MonitorSession.origin+"/terms.html")!);Text("·");Link("Privacy",destination:URL(string:MonitorSession.origin+"/privacy.html")!)}.font(.caption).foregroundStyle(Theme.muted)
-            ActionButton(title:session.busy ? "Please wait…" : sent ? "Verify and continue" : "Send sign-in code") { Task {
+            HStack{Link("Terms",destination:URL(string:MonitorSession.origin+"/terms.html")!);Text("Â·");Link("Privacy",destination:URL(string:MonitorSession.origin+"/privacy.html")!)}.font(.caption).foregroundStyle(Theme.muted)
+            ActionButton(title:session.busy ? "Please waitâ€¦" : sent ? "Verify and continue" : "Send sign-in code") { Task {
                 if sent { await session.verify(email:email,code:code);code="" }
                 else if await session.sendCode(email:email) { sent=true;resendAfter=Date().addingTimeInterval(60) }
             }}.disabled(session.busy || email.isEmpty || (!sent && !accepted) || (sent && code.count != 8))
@@ -61,7 +64,7 @@ struct MonitorLogin: View {
                 }
                 Button("Use another email"){sent=false;code=""}.font(.caption)
             }
-            Text("New accounts need the owner’s approval to view the wallet. Monitoring does not give you ownership of its assets.").font(.caption).foregroundStyle(Theme.muted)
+            Text("New accounts need the ownerâ€™s approval to view the wallet. Monitoring does not give you ownership of its assets.").font(.caption).foregroundStyle(Theme.muted)
         }.padding(26) }.scrollDismissesKeyboard(.interactively)
     }
 }
@@ -91,10 +94,10 @@ struct WalletMonitorView: View {
             if let data=session.monitor {
                 VStack(spacing:12){
                     Text(selected == nil ? "SOL BALANCE" : "HISTORICAL SOL BALANCE").font(.caption2).tracking(2).foregroundStyle(Theme.muted)
-                    Text((selected?.lamports ?? data.snapshot?.lamports).map{MonitorFormat.units($0,decimals:9)} ?? "—").font(.system(size:37,weight:.semibold,design:.rounded)).minimumScaleFactor(0.6).lineLimit(1).monospacedDigit()
+                    Text((selected?.lamports ?? data.snapshot?.lamports).map{MonitorFormat.units($0,decimals:9)} ?? "â€”").font(.system(size:37,weight:.semibold,design:.rounded)).minimumScaleFactor(0.6).lineLimit(1).monospacedDigit()
                     Text("SOL").font(.caption).foregroundStyle(Theme.muted)
                     if let point=selected { Text(MonitorFormat.time(point.observedAt)).font(.caption).foregroundStyle(Theme.muted) }
-                    else if let s=data.snapshot { Text((s.isStale ? "Stale snapshot · " : "Finalized · ")+MonitorFormat.time(s.observedAt)).font(.caption).foregroundStyle(s.isStale ? Color.orange : Theme.muted) }
+                    else if let s=data.snapshot { Text((s.isStale ? "Stale snapshot Â· " : "Finalized Â· ")+MonitorFormat.time(s.observedAt)).font(.caption).foregroundStyle(s.isStale ? Color.orange : Theme.muted) }
                     else { Text("Waiting for the first verified wallet snapshot.").font(.caption).foregroundStyle(Theme.muted) }
                 }.frame(maxWidth:.infinity).padding(.vertical,22)
                 if !points.isEmpty {
@@ -105,7 +108,7 @@ struct WalletMonitorView: View {
                     Picker("Period",selection:$period){Text("1H").tag("1H");Text("1D").tag("1D");Text("Available").tag("ALL")}.pickerStyle(.segmented).onChange(of:period){_,_ in selectedDate=nil}
                 }
                 Text("Hold and drag the chart to inspect SOL balance. Deposits, transfers and rent refunds change this line; it is not trading profit.").font(.caption2).foregroundStyle(Theme.muted)
-                VStack(alignment:.leading,spacing:12){Text("DataX Trading Systems").font(.headline);Text(data.agent.map{($0.isStale ? "Stale · " : "")+$0.status.capitalized} ?? "Feed not connected").foregroundStyle(Theme.muted);if let a=data.agent{Text(a.note).font(.caption).foregroundStyle(Theme.muted)}}.monitorCard()
+                VStack(alignment:.leading,spacing:12){Text("DataX Trading Systems").font(.headline);Text(data.agent.map{($0.isStale ? "Stale Â· " : "")+$0.status.capitalized} ?? "Feed not connected").foregroundStyle(Theme.muted);if let a=data.agent{Text(a.note).font(.caption).foregroundStyle(Theme.muted)}}.monitorCard()
                 VStack(alignment:.leading,spacing:12){Text("Reported realised profit").font(.subheadline);Text(data.agent?.realizedPnlSol.map{$0+" SOL"} ?? "Unavailable").font(.title2.monospacedDigit());Text("Reported by S9, not independently reconciled. No fees are collected by this monitoring app.").font(.caption2).foregroundStyle(Theme.muted)}.monitorCard()
                 Text("Token holdings").font(.headline)
                 if let s=data.snapshot {
@@ -114,7 +117,7 @@ struct WalletMonitorView: View {
                     ForEach(tokens){t in Link(destination:MonitorFormat.explorer("token",t.mint)){VStack(alignment:.leading,spacing:8){Text(MonitorFormat.short(t.mint)).font(.subheadline.monospaced());Text(MonitorFormat.units(t.amount,decimals:t.decimals)).font(.caption.monospacedDigit()).foregroundStyle(Theme.muted)}.monitorCard()}}
                 }else{MonitorEmpty(title:"Holdings unavailable",detail:"No wallet snapshot has been received yet.")}
                 Link(destination:MonitorFormat.explorer("account",data.wallet)){Label(MonitorFormat.short(data.wallet),systemImage:"arrow.up.right.square").font(.caption.monospaced())}
-                if session.user?.isAdmin == true { ActionButton(title:session.busy ? "Refreshing…" : "Refresh wallet snapshot"){Task{await session.refreshWallet()}}.disabled(session.busy);Text("Manual refresh is available once per minute.").font(.caption2).foregroundStyle(Theme.muted) }
+                if session.user?.isAdmin == true { ActionButton(title:session.busy ? "Refreshingâ€¦" : "Refresh wallet snapshot"){Task{await session.refreshWallet()}}.disabled(session.busy);Text("Manual refresh is available once per minute.").font(.caption2).foregroundStyle(Theme.muted) }
             }else{MonitorEmpty(title:"Wallet data unavailable",detail:"Pull to refresh. No example balances are shown.")}
         }.padding(22)}.refreshable{await session.refresh()} }
     }.background(Color.black).navigationBarTitleDisplayMode(.inline) }
@@ -123,14 +126,14 @@ struct StrategyMonitorView: View {
     @EnvironmentObject var session: MonitorSession
     var body: some View { Group{if !session.canView{AccessState()}else{ScrollView{VStack(alignment:.leading,spacing:20){
         if let a=session.monitor?.agent {
-            VStack(alignment:.leading,spacing:12){Text(a.strategy).font(.title2);Text((a.isStale ? "Stale · " : "")+a.status.capitalized).foregroundStyle(a.isStale ? Color.orange : Theme.muted);Text(a.note);Text("Observed "+MonitorFormat.time(a.observedAt)).font(.caption).foregroundStyle(Theme.muted)}.monitorCard()
+            VStack(alignment:.leading,spacing:12){Text(a.strategy).font(.title2);Text((a.isStale ? "Stale Â· " : "")+a.status.capitalized).foregroundStyle(a.isStale ? Color.orange : Theme.muted);Text(a.note);Text("Observed "+MonitorFormat.time(a.observedAt)).font(.caption).foregroundStyle(Theme.muted)}.monitorCard()
             Text("Open positions").font(.headline)
             if a.positions.isEmpty{MonitorEmpty(title:"No positions reported",detail:"The latest S9 report contains no open positions.")}
             ForEach(Array(a.positions.enumerated()),id:\.offset){_,p in HStack{Text(p.symbol);Spacer();Text(p.quantity).monospacedDigit()}.monitorCard()}
             Text("Strategy trades").font(.headline)
             if a.trades.isEmpty{MonitorEmpty(title:"No strategy trades reported",detail:"Wallet deposits and test transactions are not automatically counted as strategy trades.")}
-            ForEach(a.trades){t in Link(destination:MonitorFormat.explorer("tx",t.signature)){VStack(alignment:.leading,spacing:10){Text(t.side.uppercased()+" · "+t.symbol).font(.headline);Text(MonitorFormat.time(t.at)).font(.caption).foregroundStyle(Theme.muted);Label("Inspect transaction",systemImage:"arrow.up.right.square").font(.caption)}.monitorCard()}}
-            Text("This is S9’s latest report, not an independently audited trade ledger. Up to 100 reported trades are included.").font(.caption).foregroundStyle(Theme.muted)
+            ForEach(a.trades){t in Link(destination:MonitorFormat.explorer("tx",t.signature)){VStack(alignment:.leading,spacing:10){Text(t.side.uppercased()+" Â· "+t.symbol).font(.headline);Text(MonitorFormat.time(t.at)).font(.caption).foregroundStyle(Theme.muted);Label("Inspect transaction",systemImage:"arrow.up.right.square").font(.caption)}.monitorCard()}}
+            Text("This is S9â€™s latest report, not an independently audited trade ledger. Up to 100 reported trades are included.").font(.caption).foregroundStyle(Theme.muted)
         }else{MonitorEmpty(title:"Waiting for S9",detail:"The reporting feed is not connected yet. Status, positions and profit are unavailable.")}
     }.padding(22)}.refreshable{await session.refresh()}}}.background(Color.black).navigationTitle("Strategy") }
 }
@@ -153,7 +156,7 @@ struct MonitorAccountView: View {
         if let user=session.user {
             Section("Account"){Text(user.email).textSelection(.enabled);LabeledContent("Access",value:user.isAdmin ? "Owner" : user.canView==1 ? "Viewer" : "Pending approval")}
             if user.isAdmin{Section{NavigationLink("Manage viewer access"){MonitorAdminView()}}}
-            Section("Security"){Toggle("Lock with Face ID or passcode",isOn:$session.biometric);Text("Session stored in this device’s Keychain. Email verification is required to sign in.").font(.caption).foregroundStyle(Theme.muted)}
+            Section("Security"){Toggle("Lock with Face ID or passcode",isOn:$session.biometric);Text("Session stored in this deviceâ€™s Keychain. Email verification is required to sign in.").font(.caption).foregroundStyle(Theme.muted)}
         }
         Section("Connection"){Text(MonitorSession.origin).font(.caption).textSelection(.enabled);if let date=session.lastUpdated{LabeledContent("Last fetched",value:date.formatted(date:.omitted,time:.shortened))};Text("Read-only monitoring. This app does not accept deposits, send withdrawals, place trades or collect fees.").font(.caption).foregroundStyle(Theme.muted)}
         Section("Help"){Link("Support",destination:URL(string:"mailto:angussaw09@gmail.com")!);Link("Privacy notice",destination:URL(string:MonitorSession.origin+"/privacy.html")!);Link("Monitoring terms",destination:URL(string:MonitorSession.origin+"/terms.html")!)}
