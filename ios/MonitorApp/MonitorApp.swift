@@ -46,8 +46,8 @@ struct MonitorLogin: View {
     var body: some View {
         ScrollView { VStack(alignment:.leading,spacing:24){
             MonitorBrand().padding(.top,40)
-            Text(sent ? "Check your\ninbox." : "Every move.\nIn clear view.").font(.system(size:44,weight:.semibold)).tracking(-2).padding(.top,28)
-            Text(sent ? "Enter the 8-digit code sent to your email. It expires in ten minutes." : "Your trading wallet, positions and activity. Powered by DataX Trading Systems.").foregroundStyle(Theme.muted)
+            Text(sent ? "Check your inbox." : "Your next chapter.").font(.system(size:40,weight:.semibold)).tracking(-1.5)
+            Text(sent ? "Enter the 8-digit code sent to your email. It expires in ten minutes." : "Your portfolio. Your performance. DataX Trading Systems.").foregroundStyle(Theme.muted)
             VStack(spacing:18){
                 TextField("Email address",text:$email).textContentType(.emailAddress).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled().disabled(sent)
                 if sent { Divider();TextField("8-digit code",text:$code).textContentType(.oneTimeCode).keyboardType(.numberPad).onChange(of:code){_,v in code=String(v.filter(\.isNumber).prefix(8))} }
@@ -71,8 +71,9 @@ struct MonitorLogin: View {
 struct MonitorTabs: View {
     var body: some View { TabView {
         NavigationStack{WalletMonitorView()}.tabItem{Label("Overview",systemImage:"square.grid.2x2")}
-        NavigationStack{StrategyMonitorView()}.tabItem{Label("Strategy",systemImage:"waveform.path")}
-        NavigationStack{ChainMonitorView()}.tabItem{Label("Activity",systemImage:"clock.arrow.circlepath")}
+        NavigationStack{StrategyMonitorView()}.tabItem{Label("Trades",systemImage:"chart.xyaxis.line")}
+        NavigationStack{OriginalWalletView()}.tabItem{Label("Wallet",systemImage:"wallet.pass")}
+        NavigationStack{ChainMonitorView()}.tabItem{Label("Activity",systemImage:"bell")}
         NavigationStack{MonitorAccountView()}.tabItem{Label("Account",systemImage:"person.crop.circle")}
     } }
 }
@@ -81,46 +82,7 @@ struct AccessState: View {
     var body: some View { VStack(spacing:24){MonitorEmpty(title:session.user == nil ? "Connecting to DataX" : "Your account is ready",detail:session.user == nil ? "Fetching your account. Retry if the service is unavailable." : "The owner must approve your access before you can see this wallet.");ActionButton(title:"Check access"){Task{await session.refresh()}}}.padding(24) }
 }
 struct WalletMonitorView: View {
-    @EnvironmentObject var session: MonitorSession
-    @State private var selectedDate: Date?
-    @State private var period="1D"
-    var points: [WalletPoint] { let cutoff=period=="ALL" ? Date.distantPast : Date().addingTimeInterval(period=="1H" ? -3600 : -86400);return (session.monitor?.points ?? []).filter{$0.date >= cutoff} }
-    var selected: WalletPoint? { guard let selectedDate else{return nil};return points.min{abs($0.date.timeIntervalSince(selectedDate))<abs($1.date.timeIntervalSince(selectedDate))} }
-    var body: some View { Group {
-        if !session.canView { AccessState() }
-        else { ScrollView{VStack(alignment:.leading,spacing:22){
-            HStack{MonitorBrand();Spacer();Image(systemName:"eye").foregroundStyle(Theme.muted)}
-            if session.offline { Text("Connection unavailable. Showing the last fetched data.").font(.caption).foregroundStyle(.orange).monitorCard() }
-            if let data=session.monitor {
-                VStack(spacing:12){
-                    Text(selected == nil ? "SOL BALANCE" : "HISTORICAL SOL BALANCE").font(.caption2).tracking(2).foregroundStyle(Theme.muted)
-                    Text((selected?.lamports ?? data.snapshot?.lamports).map{MonitorFormat.units($0,decimals:9)} ?? "—").font(.system(size:37,weight:.semibold,design:.rounded)).minimumScaleFactor(0.6).lineLimit(1).monospacedDigit()
-                    Text("SOL").font(.caption).foregroundStyle(Theme.muted)
-                    if let point=selected { Text(MonitorFormat.time(point.observedAt)).font(.caption).foregroundStyle(Theme.muted) }
-                    else if let s=data.snapshot { Text((s.isStale ? "Stale snapshot · " : "Finalized · ")+MonitorFormat.time(s.observedAt)).font(.caption).foregroundStyle(s.isStale ? Color.orange : Theme.muted) }
-                    else { Text("Waiting for the first verified wallet snapshot.").font(.caption).foregroundStyle(Theme.muted) }
-                }.frame(maxWidth:.infinity).padding(.vertical,22)
-                if !points.isEmpty {
-                    Chart { ForEach(Array(points.enumerated()),id:\.offset){_,p in
-                        LineMark(x:.value("Time",p.date),y:.value("SOL",p.chartValue)).foregroundStyle(.white).lineStyle(StrokeStyle(lineWidth:2))
-                    };if let p=selected{RuleMark(x:.value("Selected",p.date)).foregroundStyle(.white.opacity(0.3));PointMark(x:.value("Time",p.date),y:.value("SOL",p.chartValue)).foregroundStyle(.white)} }
-                        .chartXSelection(value:$selectedDate).chartYAxis(.hidden).chartXAxis(.hidden).frame(height:170)
-                    Picker("Period",selection:$period){Text("1H").tag("1H");Text("1D").tag("1D");Text("Available").tag("ALL")}.pickerStyle(.segmented).onChange(of:period){_,_ in selectedDate=nil}
-                }
-                Text("Hold and drag the chart to inspect SOL balance. Deposits, transfers and rent refunds change this line; it is not trading profit.").font(.caption2).foregroundStyle(Theme.muted)
-                VStack(alignment:.leading,spacing:12){Text("DataX Trading Systems").font(.headline);Text(data.agent.map{($0.isStale ? "Stale · " : "")+$0.status.capitalized} ?? "Feed not connected").foregroundStyle(Theme.muted);if let a=data.agent{Text(a.note).font(.caption).foregroundStyle(Theme.muted)}}.monitorCard()
-                VStack(alignment:.leading,spacing:12){Text("Reported realised profit").font(.subheadline);Text(data.agent?.realizedPnlSol.map{$0+" SOL"} ?? "Unavailable").font(.title2.monospacedDigit());Text("Reported by S9, not independently reconciled. No fees are collected by this monitoring app.").font(.caption2).foregroundStyle(Theme.muted)}.monitorCard()
-                Text("Token holdings").font(.headline)
-                if let s=data.snapshot {
-                    let tokens=s.tokens.filter{NSDecimalNumber(string:$0.amount).compare(NSDecimalNumber.zero) == .orderedDescending}
-                    if tokens.isEmpty{MonitorEmpty(title:"No nonzero token holdings",detail:"Based on the latest SPL and Token-2022 snapshot.")}
-                    ForEach(tokens){t in Link(destination:MonitorFormat.explorer("token",t.mint)){VStack(alignment:.leading,spacing:8){Text(MonitorFormat.short(t.mint)).font(.subheadline.monospaced());Text(MonitorFormat.units(t.amount,decimals:t.decimals)).font(.caption.monospacedDigit()).foregroundStyle(Theme.muted)}.monitorCard()}}
-                }else{MonitorEmpty(title:"Holdings unavailable",detail:"No wallet snapshot has been received yet.")}
-                Link(destination:MonitorFormat.explorer("account",data.wallet)){Label(MonitorFormat.short(data.wallet),systemImage:"arrow.up.right.square").font(.caption.monospaced())}
-                if session.user?.isAdmin == true { ActionButton(title:session.busy ? "Refreshing…" : "Refresh wallet snapshot"){Task{await session.refreshWallet()}}.disabled(session.busy);Text("Manual refresh is available once per minute.").font(.caption2).foregroundStyle(Theme.muted) }
-            }else{MonitorEmpty(title:"Wallet data unavailable",detail:"Pull to refresh. No example balances are shown.")}
-        }.padding(22)}.refreshable{await session.refresh()} }
-    }.background(Color.black).navigationBarTitleDisplayMode(.inline) }
+    var body: some View { OriginalDashboard() }
 }
 struct StrategyMonitorView: View {
     @EnvironmentObject var session: MonitorSession
