@@ -171,22 +171,41 @@ struct OriginalDashboard: View {
 }
 struct OriginalWalletView: View {
     @EnvironmentObject var session: MonitorSession
+    private var tokens: [WalletToken] {
+        (session.monitor?.snapshot?.tokens ?? []).filter { NSDecimalNumber(string:$0.amount).compare(NSDecimalNumber.zero) == .orderedDescending }
+    }
+    private var cash: String { session.monitor?.snapshot.map { MonitorFormat.units($0.lamports,decimals:9)+" SOL" } ?? "—" }
+    private var valuationSection: some View {
+        VStack(alignment:.leading,spacing:12) {
+            if let valuation=session.portfolio?.valuation {
+                Text(valuation.totalAud.map { $0.formatted(.currency(code:"AUD")) } ?? "—").font(.system(size:42,weight:.medium,design:.rounded)).tracking(-1)
+                Text(valuation.complete ? "Estimated portfolio value" : "Partial valuation").font(.caption).foregroundStyle(Theme.muted)
+                ForEach(valuation.notes,id:\.self) { Text($0).font(.caption2).foregroundStyle(Theme.muted) }
+            }
+        }
+    }
+    private var assets: some View {
+        VStack(spacing:20) {
+            HStack { SectionEyebrow(title:"Assets");Spacer();Text("Solana").font(.caption).foregroundStyle(Theme.muted) }
+            HStack(spacing:14) {
+                Image(systemName:"circle.hexagongrid.fill").frame(width:42,height:42).background(Color(white:0.1),in:Circle())
+                Text("Solana").font(.subheadline)
+                Spacer()
+                Text(cash).font(.system(size:13)).minimumScaleFactor(0.6).lineLimit(1)
+            }
+            ForEach(tokens) { token in
+                HStack { Text(MonitorFormat.short(token.mint)).font(.subheadline);Spacer();Text(MonitorFormat.units(token.amount,decimals:token.decimals)).font(.caption).monospacedDigit() }.padding(.vertical,10)
+            }
+        }
+    }
     var body: some View {
         ScrollView {
             VStack(alignment:.leading,spacing:26) {
                 if !session.canView { AccessState() }
                 else {
                     SectionEyebrow(title:"Shared trading wallet")
-                    if let valuation=session.portfolio?.valuation {
-                        Text(valuation.totalAud.map { $0.formatted(.currency(code:"AUD")) } ?? "—").font(.system(size:42,weight:.medium,design:.rounded)).tracking(-1)
-                        Text(valuation.complete ? "Estimated portfolio value" : "Partial valuation").font(.caption).foregroundStyle(Theme.muted)
-                        ForEach(valuation.notes,id:\.self) { Text($0).font(.caption2).foregroundStyle(Theme.muted) }
-                    }
-                    HStack { SectionEyebrow(title:"Assets");Spacer();Text("Solana").font(.caption).foregroundStyle(Theme.muted) }
-                    HStack(spacing:14) { Image(systemName:"circle.hexagongrid.fill").frame(width:42,height:42).background(Color(white:0.1),in:Circle());Text("Solana").font(.subheadline);Spacer();Text(session.monitor?.snapshot.map { MonitorFormat.units($0.lamports,decimals:9)+" SOL" } ?? "—").font(.system(size:13)).minimumScaleFactor(0.6).lineLimit(1) }
-                    ForEach(session.monitor?.snapshot?.tokens.filter { NSDecimalNumber(string:$0.amount).compare(.zero) == .orderedDescending } ?? []) { token in
-                        HStack { Text(MonitorFormat.short(token.mint)).font(.subheadline);Spacer();Text(MonitorFormat.units(token.amount,decimals:token.decimals)).font(.caption).monospacedDigit() }.padding(.vertical,10)
-                    }
+                    valuationSection
+                    assets
                     Divider()
                     NavigationLink { TrackedTransfersView() } label: { HStack { Text("Deposits & withdrawals");Spacer();Image(systemName:"chevron.right").font(.caption) }.font(.subheadline).padding(.vertical,8) }
                     if let wallet=session.monitor?.wallet { Link(destination:MonitorFormat.explorer("account",wallet)) { HStack { Text("View on Solscan");Spacer();Image(systemName:"arrow.up.right").font(.caption) }.font(.subheadline) } }
